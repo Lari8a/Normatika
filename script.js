@@ -311,19 +311,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------------------
   // 6. Interactive Video Showcase & 3D Tilt Experience
   // ------------------------------------------------------------------------
-  const videoElem = document.getElementById('hero-main-video');
-  const videoFrame = document.getElementById('video-frame-elem');
-  const videoOverlay = document.getElementById('video-overlay-btn');
-  const muteBtn = document.getElementById('video-mute-toggle');
-  const muteIcon = document.getElementById('mute-icon-sym');
-  const progressBar = document.getElementById('video-progress-bar');
-  const videoContainer = document.getElementById('hero-video-container');
-  const widgetWrapper = document.querySelector('.hero-widget-wrapper');
+  function setupVideoPlayer(config) {
+    const videoElem = document.getElementById(config.videoId);
+    const videoFrame = document.getElementById(config.frameId);
+    const videoOverlay = document.getElementById(config.overlayId);
+    const muteBtn = document.getElementById(config.muteBtnId);
+    const muteIcon = document.getElementById(config.muteIconId);
+    const progressBar = document.getElementById(config.progressBarId);
+    const videoContainer = document.getElementById(config.containerId);
+    const wrapper = config.wrapperSelector ? document.querySelector(config.wrapperSelector) : null;
 
-  if (videoElem && videoFrame) {
+    if (!videoElem || !videoFrame) return;
+
     // Toggle play/pause
     const togglePlayback = (e) => {
-      if (e.target.closest('#video-mute-toggle')) return; // Ignore clicks on mute button
+      if (muteBtn && e.target.closest(`#${config.muteBtnId}`)) return;
       
       if (videoElem.paused) {
         videoElem.play().then(() => {
@@ -358,7 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           muteIcon.textContent = 'volume_up';
           muteBtn.title = 'Silenciar';
-          // Ensure it is playing when unmuted
           if (videoElem.paused) {
             videoElem.play();
           }
@@ -373,23 +374,47 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBar.style.width = `${pct}%`;
       }
     });
+
+    // High-End 3D Mouse Parallax Tilt
+    if (wrapper && videoContainer) {
+      wrapper.addEventListener('mousemove', (e) => {
+        const rect = wrapper.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+
+        const rotateY = x * 10;
+        const rotateX = -y * 10;
+
+        videoContainer.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+      });
+
+      wrapper.addEventListener('mouseleave', () => {
+        videoContainer.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+      });
+    }
   }
 
-  // High-End 3D Mouse Parallax Tilt
-  if (widgetWrapper && videoContainer) {
-    widgetWrapper.addEventListener('mousemove', (e) => {
-      const rect = widgetWrapper.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
+  // Setup About Video (Diseño sin título 3)
+  setupVideoPlayer({
+    videoId: 'about-main-video',
+    frameId: 'about-video-frame',
+    overlayId: 'about-video-overlay-btn',
+    muteBtnId: 'about-mute-toggle',
+    muteIconId: 'about-mute-icon',
+    progressBarId: 'about-progress-bar',
+    containerId: 'about-video-container',
+    wrapperSelector: '.about-image-box'
+  });
 
-      const rotateY = x * 14; // max 7 deg
-      const rotateX = -y * 14;
-
-      videoContainer.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-    });
-
-    widgetWrapper.addEventListener('mouseleave', () => {
-      videoContainer.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-    });
-  }
+  // Setup Hero Video (if present)
+  setupVideoPlayer({
+    videoId: 'hero-main-video',
+    frameId: 'video-frame-elem',
+    overlayId: 'video-overlay-btn',
+    muteBtnId: 'video-mute-toggle',
+    muteIconId: 'mute-icon-sym',
+    progressBarId: 'video-progress-bar',
+    containerId: 'hero-video-container',
+    wrapperSelector: '.hero-widget-wrapper'
+  });
 });
