@@ -34,7 +34,6 @@ loadEnv();
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const RECIPIENT_PHONE = process.env.WHATSAPP_RECIPIENT_PHONE || '525564359712';
-const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL ? process.env.MAKE_WEBHOOK_URL.trim() : '';
 const WA_API_TOKEN = process.env.WHATSAPP_API_TOKEN ? process.env.WHATSAPP_API_TOKEN.trim() : '';
 const WA_PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ? process.env.WHATSAPP_PHONE_NUMBER_ID.trim() : '';
 
@@ -87,54 +86,7 @@ async function dispatchToWhatsApp(lead) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 _Notificación automática de Normatika Consultoría S.A.S. de C.V._`;
 
-  // Opción 1: Webhook de Make
-  if (MAKE_WEBHOOK_URL) {
-    console.log('[WhatsApp Dispatch] Enviando mediante Make Webhook...');
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-
-    try {
-      const response = await fetch(MAKE_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Normatika-Web/1.0'
-        },
-        body: JSON.stringify({
-          origen: 'Formulario Web Normatika',
-          fecha: timestamp,
-          destinatarioWhatsApp: RECIPIENT_PHONE,
-          nombre: lead.nombre,
-          telefono: lead.telefono,
-          tipoEstablecimiento: lead.tipo,
-          estado: lead.estado,
-          servicio: lead.servicio,
-          aceptoPrivacidad: true,
-          aceptoPublicidad: Boolean(lead.publicidad),
-          mensajeFormateado: messageBody
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(`Make Webhook respondió con estado ${response.status}: ${text}`);
-      }
-
-      return {
-        success: true,
-        method: 'make',
-        details: 'Notificación procesada exitosamente por Make Webhook.'
-      };
-    } catch (err) {
-      clearTimeout(timeout);
-      throw new Error(`Fallo en el Webhook de Make: ${err.message}`);
-    }
-  }
-
-  // Opción 2: WhatsApp Business Cloud API de Meta
+  // WhatsApp Business Cloud API de Meta
   if (WA_API_TOKEN && WA_PHONE_ID) {
     console.log('[WhatsApp Dispatch] Enviando mediante WhatsApp Business Cloud API...');
     const controller = new AbortController();
@@ -227,7 +179,6 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       status: 'online',
       recipientPhone: RECIPIENT_PHONE,
-      hasMakeWebhook: Boolean(MAKE_WEBHOOK_URL),
       hasWhatsAppCloudApi: Boolean(WA_API_TOKEN && WA_PHONE_ID)
     }));
     return;
@@ -367,7 +318,6 @@ server.listen(PORT, () => {
   console.log(`====================================================`);
   console.log(` Servidor Normatika activo en: http://localhost:${PORT}`);
   console.log(` Receptor WhatsApp: +${RECIPIENT_PHONE}`);
-  console.log(` Make Webhook configurado: ${MAKE_WEBHOOK_URL ? 'SÍ' : 'NO'}`);
   console.log(` WhatsApp Cloud API configurado: ${WA_API_TOKEN && WA_PHONE_ID ? 'SÍ' : 'NO'}`);
   console.log(`====================================================`);
 });

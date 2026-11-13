@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) {
       btn.addEventListener('click', () => {
         const isActive = item.classList.contains('active');
-        
+
         // Close all FAQ items
         faqItems.forEach(el => el.classList.remove('active'));
 
@@ -100,32 +100,72 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ------------------------------------------------------------------------
-  // 3. Mobile Menu Navigation Toggle
+  // 3. Mobile Menu Navigation Toggle & Accessible Drawer
   // ------------------------------------------------------------------------
   const mobileBtn = document.getElementById('mobile-menu-btn');
   const navLinks = document.getElementById('nav-links');
+  const navBackdrop = document.getElementById('nav-backdrop');
+
+  function openMobileMenu() {
+    if (!navLinks) return;
+    navLinks.classList.add('mobile-open');
+    if (navBackdrop) navBackdrop.classList.add('active');
+    document.body.classList.add('menu-open');
+    if (mobileBtn) {
+      mobileBtn.setAttribute('aria-expanded', 'true');
+      const icon = mobileBtn.querySelector('.material-symbols-outlined');
+      if (icon) icon.textContent = 'close';
+    }
+  }
+
+  function closeMobileMenu() {
+    if (!navLinks) return;
+    navLinks.classList.remove('mobile-open');
+    if (navBackdrop) navBackdrop.classList.remove('active');
+    document.body.classList.remove('menu-open');
+    if (mobileBtn) {
+      mobileBtn.setAttribute('aria-expanded', 'false');
+      const icon = mobileBtn.querySelector('.material-symbols-outlined');
+      if (icon) icon.textContent = 'menu';
+    }
+  }
 
   if (mobileBtn && navLinks) {
-    mobileBtn.addEventListener('click', () => {
-      navLinks.classList.toggle('mobile-open');
-      const icon = mobileBtn.querySelector('.material-symbols-outlined');
-      if (icon) {
-        icon.textContent = navLinks.classList.contains('mobile-open') ? 'close' : 'menu';
+    mobileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = navLinks.classList.contains('mobile-open');
+      if (isOpen) {
+        closeMobileMenu();
+      } else {
+        openMobileMenu();
       }
     });
 
-    // Close menu when link is clicked
+    // Close menu when any navigation link is clicked
     navLinks.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', () => {
-        navLinks.classList.remove('mobile-open');
-        const icon = mobileBtn.querySelector('.material-symbols-outlined');
-        if (icon) icon.textContent = 'menu';
+        closeMobileMenu();
       });
+    });
+
+    // Close menu when backdrop is clicked
+    if (navBackdrop) {
+      navBackdrop.addEventListener('click', () => {
+        closeMobileMenu();
+      });
+    }
+
+    // Close menu with Escape key for keyboard accessibility
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navLinks.classList.contains('mobile-open')) {
+        closeMobileMenu();
+        mobileBtn.focus();
+      }
     });
   }
 
   // ------------------------------------------------------------------------
-  // 4. Contact Form Submission (Automated WhatsApp Backend Dispatch)
+  // 4. Contact Form Submission (Web3Forms Direct API Integration)
   // ------------------------------------------------------------------------
   const contactForm = document.getElementById('contact-form');
 
@@ -144,105 +184,147 @@ document.addEventListener('DOMContentLoaded', () => {
         statusAlert.innerHTML = '';
       }
 
-      // 1. Validar aceptación del Aviso de Privacidad
+      // 1. Validar campos obligatorios
+      const nombreInput = document.getElementById('form-nombre');
+      const tipoInput = document.getElementById('form-tipo');
+      const estadoInput = document.getElementById('form-estado');
+      const telefonoInput = document.getElementById('form-telefono');
+      const servicioInput = document.getElementById('form-servicio');
       const privacidadCheck = document.getElementById('form-privacidad');
-      if (privacidadCheck && !privacidadCheck.checked) {
-        if (statusAlert) {
-          statusAlert.style.display = 'block';
-          statusAlert.style.background = '#fef2f2';
-          statusAlert.style.border = '1px solid #f87171';
-          statusAlert.style.color = '#991b1b';
-          statusAlert.innerHTML = '<strong>Aviso:</strong> Debes aceptar el Aviso de Privacidad para poder procesar tu pre-diagnóstico.';
-        }
-        privacidadCheck.focus();
-        return;
-      }
+      const publicidadCheck = document.getElementById('form-publicidad');
+      const botcheckInput = document.getElementById('botcheck');
 
-      // 2. Extraer datos del formulario
-      const nombre = document.getElementById('form-nombre')?.value.trim() || '';
-      const tipo = document.getElementById('form-tipo')?.value.trim() || '';
-      const estado = document.getElementById('form-estado')?.value.trim() || '';
-      const telefono = document.getElementById('form-telefono')?.value.trim() || '';
-      const servicio = document.getElementById('form-servicio')?.value.trim() || '';
-      const publicidad = document.getElementById('form-publicidad')?.checked || false;
+      const nombre = nombreInput?.value.trim() || '';
+      const tipo = tipoInput?.value.trim() || '';
+      const estado = estadoInput?.value.trim() || '';
+      const telefono = telefonoInput?.value.trim() || '';
+      const servicio = servicioInput?.value.trim() || '';
 
-      // 3. Activar estado de carga en el botón
-      if (submitBtn) submitBtn.disabled = true;
-      if (btnText) btnText.textContent = 'ENVIANDO A WHATSAPP...';
-      if (btnIcon) btnIcon.textContent = 'hourglass_top';
-
-      try {
-        const response = await fetch('/api/contacto', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            nombre,
-            tipo,
-            estado,
-            telefono,
-            servicio,
-            privacidad: true,
-            publicidad
-          })
-        });
-
-        const resData = await response.json().catch(() => ({}));
-
-        if (response.ok && resData.success) {
-          // ÉXITO: El servidor recibió y procesó el pre-diagnóstico
-          showConfirmationModal(
-            '¡Pre-Diagnóstico Enviado!',
-            `Muchas gracias, ${nombre}. Tus respuestas se han enviado automáticamente a nuestro equipo de WhatsApp. En breve un especialista de Normatika Consultoría revisará tu caso para "${servicio}" y te contactará directamente.`
-          );
-
-          // Resetear el formulario solo si el envío fue exitoso
-          contactForm.reset();
-        } else {
-          // ERROR DE SERVIDOR / CREDENCIALES FALTANTES
-          // Se mantiene intacta la información en el formulario (NO se borra)
-          const errorMsg = resData.error || 'No fue posible completar el envío automático. Por favor verifica tu conexión o intenta nuevamente.';
-          
-          if (statusAlert) {
-            statusAlert.style.display = 'block';
-            statusAlert.style.background = '#fffbeb';
-            statusAlert.style.border = '1.5px solid #f59e0b';
-            statusAlert.style.color = '#92400e';
-            statusAlert.innerHTML = `
-              <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
-                <span class="material-symbols-outlined" style="color: #d97706; font-size: 1.35rem; flex-shrink: 0;">warning</span>
-                <div>
-                  <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.2rem;">Estado del envío:</strong>
-                  <span>${errorMsg}</span>
-                  <span style="display: block; font-size: 0.75rem; color: #b45309; margin-top: 0.35rem;">Tus datos no se han borrado. Puedes revisar o volver a intentar en cuanto esté lista la conexión.</span>
-                </div>
-              </div>
-            `;
-          }
-        }
-      } catch (networkErr) {
-        // ERROR DE RED
-        console.error('Error de red al enviar formulario:', networkErr);
+      if (!nombre || !tipo || !estado || !telefono || !servicio) {
         if (statusAlert) {
           statusAlert.style.display = 'block';
           statusAlert.style.background = '#fef2f2';
           statusAlert.style.border = '1.5px solid #f87171';
           statusAlert.style.color = '#991b1b';
           statusAlert.innerHTML = `
-            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1.35rem; flex-shrink: 0;">wifi_off</span>
-              <div>
-                <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.2rem;">Error de conexión:</strong>
-                <span>No se pudo conectar con el servidor local. Tus datos ingresados permanecen en el formulario; por favor verifica que el servidor esté activo.</span>
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1.35rem; flex-shrink: 0;">error</span>
+              <span>Por favor completa todos los campos requeridos del formulario.</span>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Validar aceptación obligatoria del aviso de privacidad
+      if (!privacidadCheck || !privacidadCheck.checked) {
+        if (statusAlert) {
+          statusAlert.style.display = 'block';
+          statusAlert.style.background = '#fef2f2';
+          statusAlert.style.border = '1.5px solid #f87171';
+          statusAlert.style.color = '#991b1b';
+          statusAlert.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1.35rem; flex-shrink: 0;">lock_clock</span>
+              <span>Debes aceptar el Aviso de Privacidad para poder enviar tu solicitud.</span>
+            </div>
+          `;
+        }
+        privacidadCheck?.focus();
+        return;
+      }
+
+      // 2. Activar estado de carga en el botón (mostrar "Enviando…" y desactivar)
+      if (submitBtn) submitBtn.disabled = true;
+      const originalText = btnText ? btnText.textContent : 'ENVIAR PRE-DIAGNÓSTICO';
+      if (btnText) btnText.textContent = 'Enviando…';
+      if (btnIcon) btnIcon.textContent = 'hourglass_top';
+
+      // 3. Preparar carga útil con etiquetas claras
+      const timestampMX = new Date().toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        dateStyle: 'full',
+        timeStyle: 'long'
+      });
+
+      const payload = {
+        access_key: '480e9075-f029-4172-8e48-5ce031768e84',
+        subject: 'Nueva solicitud de pre-diagnóstico — Normatika',
+        from_name: 'Página web de Normatika',
+        botcheck: botcheckInput && botcheckInput.checked ? 'true' : '',
+        'Nombre del profesional o director': nombre,
+        'Tipo de establecimiento': tipo,
+        'Estado de la República': estado,
+        'Teléfono / WhatsApp de contacto': telefono,
+        'Servicio o paquete de interés': servicio,
+        'Aceptación del aviso de privacidad': privacidadCheck && privacidadCheck.checked ? 'Sí' : 'No',
+        'Aceptación de promociones': publicidadCheck && publicidadCheck.checked ? 'Sí' : 'No',
+        'Fecha y hora del envío': timestampMX
+      };
+
+      try {
+        const response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        // Comprobar tanto el estado HTTP (200) como success en la respuesta JSON
+        if (response.status === 200 && data.success === true) {
+          // ÉXITO: Limpiar campos, restablecer casillas y mostrar mensaje exacto
+          contactForm.reset();
+
+          if (statusAlert) {
+            statusAlert.style.display = 'block';
+            statusAlert.style.background = '#ecfdf5';
+            statusAlert.style.border = '1.5px solid #10b981';
+            statusAlert.style.color = '#065f46';
+            statusAlert.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <span class="material-symbols-outlined" style="color: #059669; font-size: 1.45rem; flex-shrink: 0;">check_circle</span>
+                <span style="font-size: 0.9rem; font-weight: 600;">Gracias. Recibimos tu solicitud y pronto nos pondremos en contacto contigo</span>
               </div>
+            `;
+          }
+        } else {
+          // FALLA / RECHAZO: Conservar los datos ingresados y mostrar mensaje exacto
+          if (statusAlert) {
+            statusAlert.style.display = 'block';
+            statusAlert.style.background = '#fef2f2';
+            statusAlert.style.border = '1.5px solid #f87171';
+            statusAlert.style.color = '#991b1b';
+            statusAlert.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1.35rem; flex-shrink: 0;">error</span>
+                <span style="font-size: 0.9rem; font-weight: 600;">No pudimos enviar tu solicitud. Inténtalo nuevamente</span>
+              </div>
+            `;
+          }
+        }
+      } catch (err) {
+        // ERROR DE RED / FETCH: Conservar los datos y mostrar mensaje exacto
+        console.error('Error al enviar formulario a Web3Forms:', err);
+        if (statusAlert) {
+          statusAlert.style.display = 'block';
+          statusAlert.style.background = '#fef2f2';
+          statusAlert.style.border = '1.5px solid #f87171';
+          statusAlert.style.color = '#991b1b';
+          statusAlert.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1.35rem; flex-shrink: 0;">wifi_off</span>
+              <span style="font-size: 0.9rem; font-weight: 600;">No pudimos enviar tu solicitud. Inténtalo nuevamente</span>
             </div>
           `;
         }
       } finally {
-        // Restaurar estado del botón
+        // Reactivar el botón para permitir reintentar
         if (submitBtn) submitBtn.disabled = false;
-        if (btnText) btnText.textContent = 'ENVIAR PRE-DIAGNÓSTICO';
+        if (btnText) btnText.textContent = originalText;
         if (btnIcon) btnIcon.textContent = 'send';
       }
     });
@@ -326,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toggle play/pause
     const togglePlayback = (e) => {
       if (muteBtn && e.target.closest(`#${config.muteBtnId}`)) return;
-      
+
       if (videoElem.paused) {
         videoElem.play().then(() => {
           if (videoOverlay) videoOverlay.classList.add('is-playing');
