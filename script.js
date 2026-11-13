@@ -191,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const telefonoInput = document.getElementById('form-telefono');
       const servicioInput = document.getElementById('form-servicio');
       const privacidadCheck = document.getElementById('form-privacidad');
-      const publicidadCheck = document.getElementById('form-publicidad');
       const botcheckInput = document.getElementById('botcheck');
 
       const nombre = nombreInput?.value.trim() || '';
@@ -258,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Teléfono / WhatsApp de contacto': telefono,
         'Servicio o paquete de interés': servicio,
         'Aceptación del aviso de privacidad': privacidadCheck && privacidadCheck.checked ? 'Sí' : 'No',
-        'Aceptación de promociones': publicidadCheck && publicidadCheck.checked ? 'Sí' : 'No',
         'Fecha y hora del envío': timestampMX
       };
 

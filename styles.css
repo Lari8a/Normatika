@@ -1113,8 +1113,8 @@ body.menu-open {
 
 .inspection-point-card {
   display: flex;
-  align-items: flex-start;
-  gap: 1.1rem;
+  align-items: center;
+  gap: 20px;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   transition: transform 0.25s ease, border-color 0.25s ease;
@@ -1128,6 +1128,8 @@ body.menu-open {
 .check-naranja-box {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: 50%;
   background: rgba(255, 138, 91, 0.18);
   border: 2px solid var(--naranja);
@@ -1137,21 +1139,27 @@ body.menu-open {
   flex-shrink: 0;
   color: var(--naranja);
   box-shadow: 0 0 18px rgba(255, 138, 91, 0.35);
-  margin-top: 2px;
+  margin: 0;
 }
 
 .check-naranja-box .material-symbols-outlined {
   font-size: 1.4rem;
   font-weight: 800;
+  line-height: 1;
 }
 
 .inspection-point-content {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.25rem;
+  margin: 0;
+  padding: 0;
 }
 
 .inspection-point-title {
+  margin: 0;
+  padding: 0;
   font-family: var(--font-heading);
   font-size: 1.05rem;
   font-weight: 700;
@@ -1160,6 +1168,9 @@ body.menu-open {
 }
 
 .inspection-point-subtext {
+  margin: 0;
+  padding: 0;
+  display: block;
   font-size: 0.85rem;
   color: var(--turquesa);
   font-weight: 500;
@@ -1256,6 +1267,15 @@ body.menu-open {
   aspect-ratio: 9 / 16;
   width: 100%;
   max-height: 533px;
+}
+
+/* Unified About Paragraphs */
+.about-description-p {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  margin: 0;
 }
 
 /* Vibrant Colorful Metrics Showcase */
@@ -2465,6 +2485,11 @@ body.menu-open {
 }
 
 @media (max-width: 480px) {
+  .about-description-p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
   .section-title {
     font-size: 1.5rem;
     line-height: 1.25;

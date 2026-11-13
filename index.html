@@ -345,10 +345,10 @@
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           <div class="badge-pill">QUIÉNES SOMOS</div>
           <h2 class="section-title" style="text-align: left;">Nos encargamos de la parte regulatoria. Tú enfócate en tus pacientes.</h2>
-          <p style="font-size: 1.0625rem; color: var(--color-text-muted); line-height: 1.65;">
+          <p class="about-description-p">
             Constituidos formalmente como <strong>Normatika Consultoría S.A.S. de C.V.</strong> y debidamente registrados ante las autoridades competentes, somos una consultoría especializada en normatividad y regulación sanitaria en México.
           </p>
-          <p style="font-size: 0.9375rem; color: var(--color-text-muted); line-height: 1.6;">
+          <p class="about-description-p">
             Acompañamos a médicos, odontólogos, directores de clínicas y centros de salud a identificar con exactitud los requerimientos de su establecimiento, estructurar expedientes conforme a las Normas Oficiales Mexicanas y fortalecer su cumplimiento legal y operativo ante inspecciones de COFEPRIS y autoridades locales.
           </p>
 
@@ -915,21 +915,12 @@
               </select>
             </div>
 
-            <!-- Privacy Policy & Consent Checkboxes -->
-            <div class="form-checkbox-container" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.25rem; padding: 0.85rem; background: rgba(244, 248, 252, 0.85); border-radius: var(--radius-md); border: 1px solid rgba(11, 46, 92, 0.12);">
-              <!-- Checkbox 1: Obligatorio para tratamiento de datos -->
+            <!-- Privacy Policy Consent Checkbox -->
+            <div class="form-checkbox-container" style="margin-top: 0.25rem; padding: 0.85rem; background: rgba(244, 248, 252, 0.85); border-radius: var(--radius-md); border: 1px solid rgba(11, 46, 92, 0.12);">
               <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
                 <input type="checkbox" id="form-privacidad" name="Aceptación del aviso de privacidad" required style="margin-top: 0.2rem; accent-color: var(--turquesa-dark); width: 1.15rem; height: 1.15rem; cursor: pointer; flex-shrink: 0;" />
                 <label for="form-privacidad" style="font-size: 0.8125rem; color: #334155; line-height: 1.45; cursor: pointer;">
                   He leído y acepto el <a href="aviso-de-privacidad.html" target="_blank" rel="noopener noreferrer" style="color: var(--turquesa-dark); text-decoration: underline; font-weight: 700;">Aviso de Privacidad</a> para el tratamiento de mis datos de contacto con fines de atención y cotización. <span style="color: #dc2626; font-weight: 700;" title="Campo obligatorio">*</span>
-                </label>
-              </div>
-
-              <!-- Checkbox 2: Opcional y separado para comunicaciones publicitarias -->
-              <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
-                <input type="checkbox" id="form-publicidad" name="Aceptación de promociones" style="margin-top: 0.2rem; accent-color: var(--turquesa-dark); width: 1.15rem; height: 1.15rem; cursor: pointer; flex-shrink: 0;" />
-                <label for="form-publicidad" style="font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.45; cursor: pointer;">
-                  (Opcional) Acepto recibir información sobre actualizaciones normativas de COFEPRIS, guías sanitarias y promociones de servicios de Normatika Consultoría S.A.S. de C.V.
                 </label>
               </div>
             </div>
