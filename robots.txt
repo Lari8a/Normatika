@@ -1,0 +1,12 @@
+# ==============================================================================
+# robots.txt — Normatika Consultoría S.A.S. de C.V.
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /data/
+
+# Sitemap de producción
+Sitemap: https://normatika.com/sitemap.xml
+

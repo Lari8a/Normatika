@@ -38,7 +38,84 @@ const WA_API_TOKEN = process.env.WHATSAPP_API_TOKEN ? process.env.WHATSAPP_API_T
 const WA_PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ? process.env.WHATSAPP_PHONE_NUMBER_ID.trim() : '';
 
 // -----------------------------------------------------------------------------
-// 2. Directorio de Almacenamiento Local de Leads
+// 2. Validación y Normalización de Teléfono Mexicano
+// -----------------------------------------------------------------------------
+function validateMexicanPhone(value) {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  // 1. Verificación estricta de caracteres permitidos
+  const allowedCharsRegex = /^\s*(\+?\s*\(|\(?\s*\+)?[\d\s\-()]+$/;
+  if (!allowedCharsRegex.test(trimmed)) {
+    return false;
+  }
+
+  // El signo '+' solo puede aparecer una vez y al inicio
+  const plusCount = (trimmed.match(/\+/g) || []).length;
+  if (plusCount > 1) return false;
+  if (plusCount === 1) {
+    const plusIndex = trimmed.indexOf('+');
+    const firstDigitIndex = trimmed.search(/\d/);
+    if (firstDigitIndex === -1 || plusIndex > firstDigitIndex) {
+      return false;
+    }
+  }
+
+  // Paréntesis balanceados
+  const openParens = (trimmed.match(/\(/g) || []).length;
+  const closeParens = (trimmed.match(/\)/g) || []).length;
+  if (openParens !== closeParens || openParens > 2) {
+    return false;
+  }
+
+  // Extraer dígitos
+  const digits = trimmed.replace(/\D/g, '');
+
+  // Con prefijo '+' (código de país +52 y 10 dígitos)
+  if (trimmed.includes('+')) {
+    const normalized = trimmed.replace(/[\s\(\)\-]/g, '');
+    if (!normalized.startsWith('+52')) {
+      return false;
+    }
+    if (digits.length !== 12 || !digits.startsWith('52')) {
+      return false;
+    }
+    const nationalDigits = digits.slice(2);
+    return nationalDigits.length === 10;
+  }
+
+  // Sin '+': exactamente 10 dígitos
+  if (digits.length === 10) {
+    return true;
+  }
+
+  // O 12 dígitos iniciando con 52 separado por espacio, guion o paréntesis
+  if (digits.length === 12 && digits.startsWith('52')) {
+    const match52Sep = trimmed.match(/^\(?52[\s\)\-]/);
+    if (match52Sep) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function normalizeMexicanPhone(value) {
+  if (!value) return '';
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('52')) {
+    return `+52 ${digits.slice(2, 4)} ${digits.slice(4, 8)} ${digits.slice(8)}`;
+  }
+  if (digits.length === 10) {
+    return `${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6)}`;
+  }
+  return trimmed;
+}
+
+// -----------------------------------------------------------------------------
+// 3. Directorio de Almacenamiento Local de Leads
 // -----------------------------------------------------------------------------
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -143,6 +220,8 @@ _Notificación automática de Normatika Consultoría S.A.S. de C.V._`;
 // -----------------------------------------------------------------------------
 // 4. Servidor HTTP (Archivos Estáticos + API REST)
 // -----------------------------------------------------------------------------
+const SITE_URL = process.env.SITE_URL || 'https://normatika.com';
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -153,6 +232,8 @@ const MIME_TYPES = {
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
   '.mov': 'video/quicktime',
   '.mp4': 'video/mp4'
 };
@@ -213,6 +294,15 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
+        if (!validateMexicanPhone(data.telefono)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            success: false, 
+            error: 'Ingresa un teléfono válido de 10 dígitos. Puedes incluir +52.' 
+          }));
+          return;
+        }
+
         if (!data.tipo || !data.tipo.trim()) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Debes seleccionar el tipo de establecimiento.' }));
@@ -237,14 +327,14 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // Estructurar el lead
+        // Estructurar el lead con teléfono normalizado
         const lead = {
           id: 'LEAD-' + Date.now(),
           fechaIso: new Date().toISOString(),
           nombre: data.nombre.trim(),
           tipo: data.tipo.trim(),
           estado: data.estado.trim(),
-          telefono: data.telefono.trim(),
+          telefono: normalizeMexicanPhone(data.telefono),
           servicio: data.servicio.trim(),
           privacidad: true,
           publicidad: Boolean(data.publicidad)
@@ -298,6 +388,7 @@ const server = http.createServer(async (req, res) => {
   // ---------------------------------------------------------------------------
   let safePath = decodeURI(urlPath);
   if (safePath === '/') safePath = '/index.html';
+  if (safePath === '/sitemap') safePath = '/sitemap.xml';
   const filePath = path.join(__dirname, safePath);
 
   fs.stat(filePath, (err, stats) => {

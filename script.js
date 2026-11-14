@@ -60,10 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Refresh ScrollTrigger once all images and assets finish loading
-    window.addEventListener('load', () => {
-      ScrollTrigger.refresh();
-    });
+    // ScrollTrigger will be refreshed in coordination with anchor navigation on window load
   }
 
   // Ensure all cards are 100% visible immediately
@@ -73,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ------------------------------------------------------------------------
-  // 2. FAQ Accordion Toggle
+  // 2. FAQ Accordion Toggle & ARIA Accessibility
   // ------------------------------------------------------------------------
   const faqItems = document.querySelectorAll('.faq-item');
 
@@ -84,19 +81,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const isActive = item.classList.contains('active');
 
         // Close all FAQ items
-        faqItems.forEach(el => el.classList.remove('active'));
+        faqItems.forEach(el => {
+          el.classList.remove('active');
+          const otherBtn = el.querySelector('.faq-btn');
+          if (otherBtn) {
+            otherBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
 
         // Toggle clicked item
         if (!isActive) {
           item.classList.add('active');
+          btn.setAttribute('aria-expanded', 'true');
+        } else {
+          btn.setAttribute('aria-expanded', 'false');
         }
       });
     }
   });
 
-  // Open first FAQ by default
+  // Open first FAQ by default and sync aria-expanded
   if (faqItems.length > 0) {
     faqItems[0].classList.add('active');
+    const firstBtn = faqItems[0].querySelector('.faq-btn');
+    if (firstBtn) {
+      firstBtn.setAttribute('aria-expanded', 'true');
+    }
   }
 
   // ------------------------------------------------------------------------
@@ -165,9 +175,158 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ------------------------------------------------------------------------
+  // Helper: Validación y Normalización de Teléfono Mexicano
+  // ------------------------------------------------------------------------
+  function validateMexicanPhone(value) {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+
+    // 1. Verificación estricta de caracteres permitidos:
+    // Solo dígitos 0-9, espacios, guiones (-), paréntesis () y '+' inicial opcional.
+    // Rechaza de inmediato letras y caracteres especiales no permitidos.
+    const allowedCharsRegex = /^\s*(\+?\s*\(|\(?\s*\+)?[\d\s\-()]+$/;
+    if (!allowedCharsRegex.test(trimmed)) {
+      return false;
+    }
+
+    // El signo '+' solo puede aparecer una vez y debe estar al inicio antes de los dígitos
+    const plusCount = (trimmed.match(/\+/g) || []).length;
+    if (plusCount > 1) return false;
+    if (plusCount === 1) {
+      const plusIndex = trimmed.indexOf('+');
+      const firstDigitIndex = trimmed.search(/\d/);
+      if (firstDigitIndex === -1 || plusIndex > firstDigitIndex) {
+        return false;
+      }
+    }
+
+    // Paréntesis balanceados (máximo un par de apertura y cierre)
+    const openParens = (trimmed.match(/\(/g) || []).length;
+    const closeParens = (trimmed.match(/\)/g) || []).length;
+    if (openParens !== closeParens || openParens > 2) {
+      return false;
+    }
+
+    // Extraer únicamente los dígitos una vez verificados los caracteres
+    const digits = trimmed.replace(/\D/g, '');
+
+    // Caso A: Con prefijo '+' (debe ser código de país +52 y 10 dígitos nacionales)
+    if (trimmed.includes('+')) {
+      const normalized = trimmed.replace(/[\s\(\)\-]/g, '');
+      if (!normalized.startsWith('+52')) {
+        return false;
+      }
+      if (digits.length !== 12 || !digits.startsWith('52')) {
+        return false;
+      }
+      const nationalDigits = digits.slice(2);
+      if (nationalDigits.length !== 10) {
+        return false;
+      }
+      return true;
+    }
+
+    // Caso B: Sin '+'
+    // Exactamente 10 dígitos nacionales
+    if (digits.length === 10) {
+      return true;
+    }
+
+    // O 12 dígitos iniciando con 52 con separación explícita (espacio, guion o paréntesis)
+    if (digits.length === 12 && digits.startsWith('52')) {
+      const match52Sep = trimmed.match(/^\(?52[\s\)\-]/);
+      if (match52Sep) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function normalizeMexicanPhone(value) {
+    if (!value) return '';
+    const trimmed = value.trim();
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('52')) {
+      return `+52 ${digits.slice(2, 4)} ${digits.slice(4, 8)} ${digits.slice(8)}`;
+    }
+    if (digits.length === 10) {
+      return `${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6)}`;
+    }
+    return trimmed;
+  }
+
+  // ------------------------------------------------------------------------
   // 4. Contact Form Submission (Web3Forms Direct API Integration)
   // ------------------------------------------------------------------------
   const contactForm = document.getElementById('contact-form');
+  const telefonoInput = document.getElementById('form-telefono');
+  const telefonoError = document.getElementById('telefono-error');
+
+  function showPhoneError(msg) {
+    if (telefonoInput) {
+      telefonoInput.classList.add('is-invalid');
+      telefonoInput.setAttribute('aria-invalid', 'true');
+    }
+    if (telefonoError) {
+      telefonoError.textContent = msg || 'Ingresa un teléfono válido de 10 dígitos. Puedes incluir +52.';
+      telefonoError.style.display = 'block';
+    }
+  }
+
+  function clearPhoneError() {
+    if (telefonoInput) {
+      telefonoInput.classList.remove('is-invalid');
+      telefonoInput.removeAttribute('aria-invalid');
+    }
+    if (telefonoError) {
+      telefonoError.style.display = 'none';
+    }
+  }
+
+  if (telefonoInput) {
+    // Al escribir, limpiar error cuando el valor sea válido o esté en corrección
+    telefonoInput.addEventListener('input', () => {
+      const raw = telefonoInput.value.trim();
+      if (!raw) {
+        clearPhoneError();
+      } else if (validateMexicanPhone(raw)) {
+        clearPhoneError();
+      }
+    });
+
+    // Al perder el foco (blur), si el campo tiene valor o es obligatorio, validar
+    telefonoInput.addEventListener('blur', () => {
+      const raw = telefonoInput.value.trim();
+      const isRequired = telefonoInput.hasAttribute('required') || telefonoInput.required;
+      if (!raw) {
+        if (isRequired) {
+          showPhoneError();
+        } else {
+          clearPhoneError();
+        }
+      } else if (!validateMexicanPhone(raw)) {
+        showPhoneError();
+      } else {
+        clearPhoneError();
+      }
+    });
+
+    // Al presionar Enter en el campo de teléfono, interceptar y validar de inmediato
+    telefonoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const raw = telefonoInput.value.trim();
+        const isRequired = telefonoInput.hasAttribute('required') || telefonoInput.required;
+        const isInvalid = !raw ? isRequired : !validateMexicanPhone(raw);
+        if (isInvalid) {
+          e.preventDefault();
+          showPhoneError();
+          telefonoInput.focus();
+        }
+      }
+    });
+  }
 
   if (contactForm) {
     contactForm.addEventListener('submit', async (e) => {
@@ -184,11 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
         statusAlert.innerHTML = '';
       }
 
-      // 1. Validar campos obligatorios
+      // 1. Validar campos obligatorios y teléfono
       const nombreInput = document.getElementById('form-nombre');
       const tipoInput = document.getElementById('form-tipo');
       const estadoInput = document.getElementById('form-estado');
-      const telefonoInput = document.getElementById('form-telefono');
       const servicioInput = document.getElementById('form-servicio');
       const privacidadCheck = document.getElementById('form-privacidad');
       const botcheckInput = document.getElementById('botcheck');
@@ -199,7 +357,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const telefono = telefonoInput?.value.trim() || '';
       const servicio = servicioInput?.value.trim() || '';
 
-      if (!nombre || !tipo || !estado || !telefono || !servicio) {
+      // Validación estricta del campo de teléfono
+      const isPhoneRequired = telefonoInput ? (telefonoInput.hasAttribute('required') || telefonoInput.required) : true;
+      let isPhoneInvalid = false;
+      if (!telefono) {
+        if (isPhoneRequired) isPhoneInvalid = true;
+      } else if (!validateMexicanPhone(telefono)) {
+        isPhoneInvalid = true;
+      }
+
+      if (isPhoneInvalid) {
+        showPhoneError('Ingresa un teléfono válido de 10 dígitos. Puedes incluir +52.');
+        telefonoInput?.focus();
+        return; // Detiene el envío: NO se realiza ninguna petición fetch
+      } else {
+        clearPhoneError();
+      }
+
+      if (!nombre || !tipo || !estado || !servicio) {
         if (statusAlert) {
           statusAlert.style.display = 'block';
           statusAlert.style.background = '#fef2f2';
@@ -212,6 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           `;
         }
+        if (!nombre) nombreInput?.focus();
+        else if (!tipo) tipoInput?.focus();
+        else if (!estado) estadoInput?.focus();
+        else if (!servicio) servicioInput?.focus();
         return;
       }
 
@@ -254,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Nombre del profesional o director': nombre,
         'Tipo de establecimiento': tipo,
         'Estado de la República': estado,
-        'Teléfono / WhatsApp de contacto': telefono,
+        'Teléfono / WhatsApp de contacto': normalizeMexicanPhone(telefono),
         'Servicio o paquete de interés': servicio,
         'Aceptación del aviso de privacidad': privacidadCheck && privacidadCheck.checked ? 'Sí' : 'No',
         'Fecha y hora del envío': timestampMX
@@ -382,7 +561,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navItems.forEach(item => {
       item.classList.remove('active');
-      if (item.getAttribute('href') === `#${current}`) {
+      const itemHref = item.getAttribute('href');
+      if (itemHref === `#${current}` || itemHref === `/#${current}`) {
         item.classList.add('active');
       }
     });
@@ -496,5 +676,122 @@ document.addEventListener('DOMContentLoaded', () => {
     progressBarId: 'video-progress-bar',
     containerId: 'hero-video-container',
     wrapperSelector: '.hero-widget-wrapper'
+  });
+
+  // ------------------------------------------------------------------------
+  // 7. Section Navigation & Anchor Scroll Synchronization
+  // ------------------------------------------------------------------------
+  // Prevent browser scrollRestoration from interfering with deep anchor targeting
+  if ('scrollRestoration' in history && window.location.hash) {
+    history.scrollRestoration = 'manual';
+  }
+
+  function getHeaderOffset() {
+    const header = document.querySelector('.site-header');
+    const headerHeight = header ? header.getBoundingClientRect().height : (window.innerWidth <= 768 ? 72 : 80);
+    const buffer = window.innerWidth <= 768 ? 12 : 16;
+    return headerHeight + buffer;
+  }
+
+  function scrollToHashTarget(smooth = false) {
+    const hash = window.location.hash;
+    if (!hash || hash === '#') return;
+    try {
+      const targetId = decodeURIComponent(hash.slice(1));
+      if (targetId === 'inicio') {
+        window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+        return;
+      }
+      const targetElement = document.getElementById(targetId) || document.querySelector(`[name="${targetId}"]`);
+      if (!targetElement) return;
+
+      const headerOffset = getHeaderOffset();
+      const elementTop = targetElement.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
+      const finalPosition = Math.max(0, elementTop - headerOffset);
+
+      window.scrollTo({
+        top: finalPosition,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    } catch (e) {
+      console.error('Error scrolling to hash target:', e);
+    }
+  }
+
+  // 1. Initial jump as soon as DOM is ready (double-rAF guarantees initial layout & paint are committed)
+  if (window.location.hash) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToHashTarget(false);
+      });
+    });
+  }
+
+  // 2. Re-synchronize when all assets/images finish loading & ScrollTrigger refreshes
+  window.addEventListener('load', () => {
+    if (typeof ScrollTrigger !== 'undefined') {
+      ScrollTrigger.refresh();
+    }
+    if (window.location.hash) {
+      requestAnimationFrame(() => {
+        scrollToHashTarget(false);
+      });
+    }
+  });
+
+  // If already complete (e.g. cached/fast load), run sync in next frame
+  if (document.readyState === 'complete' && window.location.hash) {
+    requestAnimationFrame(() => {
+      scrollToHashTarget(false);
+    });
+  }
+
+  // 3. Handle browser Back/Forward navigation and external hash changes
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash && window.location.hash !== '#') {
+      scrollToHashTarget(true);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  // 4. Popstate handling for clean history navigation
+  window.addEventListener('popstate', () => {
+    if (window.location.hash && window.location.hash !== '#') {
+      scrollToHashTarget(true);
+    } else if (!window.location.hash) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  // 5. Smooth in-page anchor click navigation (for <a href="#..."> and <a href="/#...">)
+  document.querySelectorAll('a[href^="#"], a[href^="/#"]').forEach(anchor => {
+    anchor.addEventListener('click', (e) => {
+      const rawHref = anchor.getAttribute('href');
+      const hashIndex = rawHref.indexOf('#');
+      if (hashIndex === -1) return;
+      const targetId = rawHref.slice(hashIndex + 1);
+      if (!targetId) return;
+
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        e.preventDefault();
+        const hashStr = '#' + targetId;
+        if (window.location.hash !== hashStr) {
+          history.pushState(null, '', hashStr);
+        }
+        if (targetId === 'inicio') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const headerOffset = getHeaderOffset();
+          const elementTop = targetElement.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
+          const finalPosition = Math.max(0, elementTop - headerOffset);
+          window.scrollTo({
+            top: finalPosition,
+            behavior: 'smooth'
+          });
+        }
+      }
+    });
   });
 });
